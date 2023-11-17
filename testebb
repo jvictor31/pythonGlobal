@@ -1,0 +1,35 @@
+- name: Procura instancia
+      find:
+        paths: /home/c1334152/tbs-tibco-bw/{{dominio}}/
+        patterns: "{{ nome_aplicacao }}*.sh"
+        recurse: yes
+        file_type: file
+      register: instancia
+      when: diretorio.matched|int == 0
+
+    - debug:
+        msg: "{{ instancia }}"
+
+    - fail:
+        msg: "Mais de uma instancia com o mesmo nome encontrada. Para colocar a flag em mais de uma aplicação passe o diretório como paremetro."
+      when: diretorio.matched|int == 0 and instancia.matched|int > 1
+
+    - fail:
+        msg: "Nenhuma aplicação ou instancia foi encontrada com esse nome"
+      when: diretorio.matched|int == 0 and instancia.matched|int == 0
+
+    - name: bwManage incluir flag na aplicação
+      shell: "./bwManage.sh -flag {{ instancia.files.0.path.split('/')[-1].split('.')[0] }}"
+      args:
+        chdir: "/opt/tibco/scripts/TIBEnvACC"
+      ignore_errors: yes
+      when: diretorio.matched|int ==  0 and instancia.matched|int == 1 and operacao == "stop"
+      become_user: tibcousr
+
+    - name: bwManage remover flag na aplicação
+      shell: "./bwManage.sh -start {{ instancia.files.0.path.split('/')[-1].split('.')[0] }}"
+      args:
+        chdir: "/opt/tibco/scripts/TIBEnvACC"
+      ignore_errors: yes
+      when: diretorio.matched|int ==  0 and instancia.matched|int == 1 and operacao == "start"
+      become_user: tibcousr
